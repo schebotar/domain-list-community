@@ -1,5 +1,8 @@
-name: Build dlc.dat
+name: Build geosite.dat
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 4"
   push:
     branches:
       - master
@@ -13,53 +16,31 @@ jobs:
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v4
-        with:
-          path: code
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: code/go.mod
+          go-version-file: go.mod
 
       - name: Set variables
         run: |
-          echo "RELEASE_NAME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
-          echo "TAG_NAME=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          echo "TAG_NAME=$(date +%Y-%m-%d)" >> $GITHUB_ENV
         shell: bash
 
-      - name: Build dlc.dat file
-        run: |
-          cd code || exit 1
-          go run ./ --outputdir=../ --exportlists=category-ads-all,tld-cn,cn,tld-\!cn,geolocation-\!cn,apple,icloud
-          cd ../ && rm -rf code
+      - name: Download list
+        run: mkdir data && curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst
 
-      - name: Generate dlc.dat sha256 hash
+      - name: Build dat file
         run: |
-          sha256sum dlc.dat > dlc.dat.sha256sum
+          go run ./ --exportlists=antifilter-community --outputname=geosite.dat
 
-      - name: Generate Zip
+      - name: Generate sha256 hash
         run: |
-          zip -9 dlc.dat.zip dlc.dat
-          sha256sum dlc.dat.zip > dlc.dat.zip.sha256sum
-
-      - name: Generate XZ
-        run: |
-          xz -z -9 -k dlc.dat
-          sha256sum dlc.dat.xz > dlc.dat.xz.sha256sum
-
-      - name: Git push assets to "release" branch
-        run: |
-          git init
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b release
-          git add *.txt *.sha256sum dlc.dat dlc.dat.zip dlc.dat.xz
-          git commit -m "${{ env.RELEASE_NAME }}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f -u origin release
+          sha256sum geosite.dat > geosite.dat.sha256sum
 
       - name: Release and upload assets
         run: |
-          gh release create ${{ env.TAG_NAME }} --generate-notes --latest --title ${{ env.RELEASE_NAME }} ./dlc.dat ./dlc.dat.*
+          gh release create ${{ env.TAG_NAME }} --generate-notes --latest --title ${{ env.RELEASE_NAME }} ./geosite.dat ./geosite.dat.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
