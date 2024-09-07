@@ -29,11 +29,11 @@ jobs:
         shell: bash
 
       - name: Download list
-        run: mkdir data && curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst
+        run: mkdir data && curl -o data/antifilter-community https://community.antifilter.download/list/domains.lst && curl -o data/antifilter https://antifilter.download/list/domains.lst
 
       - name: Build dat file
         run: |
-          go run ./ --exportlists=antifilter-community --outputname=geosite.dat
+          go run ./ --exportlists=antifilter-community,antifilter --outputname=geosite.dat
 
       - name: Generate sha256 hash
         run: |
